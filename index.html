@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cómo llegar — FNS 2026</title>
+  <link rel="icon" href="assets/logo-fns.svg">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --fns-azul: #0B1066;
+      --fns-azul-oscuro: #080a4d;
+      --fns-crema: #FDFBF0;
+      --fns-crema-oscuro: #F3EBD2;
+      --fns-blanco: #FFFFFF;
+      --fns-texto: #1A1A2E;
+      --fns-texto-suave: #5B5B7A;
+      --sidebar-width: 340px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--fns-crema); color: var(--fns-texto); }
+    body { overflow: hidden; display: flex; flex-direction: column; position: relative; }
+
+    /* ---------- Header ---------- */
+    header {
+      position: sticky; top: 0; z-index: 1100;
+      width: 100%; height: 72px;
+      background: var(--fns-blanco);
+      border-bottom: 2px solid var(--fns-azul);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; box-shadow: 0 4px 20px rgba(11,16,102,0.15); flex-shrink: 0;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .logo-fns { height: 46px; width: auto; display: block; }
+    .header-titulo { font-size: 1.15rem; font-weight: 700; color: var(--fns-azul); white-space: nowrap; }
+    .header-sub { font-size: 0.82rem; color: var(--fns-texto-suave); white-space: nowrap; margin-top: 2px; }
+    .header-actions { display: flex; align-items: center; gap: 10px; }
+    .btn { border: none; border-radius: 8px; padding: 8px 16px; font-size: 0.88rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+    .btn-primario { background: var(--fns-azul); color: var(--fns-blanco); box-shadow: 0 2px 8px rgba(11,16,102,0.25); }
+    .btn-primario:hover { background: var(--fns-azul-oscuro); }
+    .btn-secundario { background: var(--fns-crema-oscuro); color: var(--fns-texto); border: 1px solid #E8DCAE; }
+    .btn-secundario:hover { background: #E8DCAE; }
+
+    /* ---------- Mapa ---------- */
+    #mapa { flex: 1 1 100%; height: calc(100vh - 72px); min-height: 500px; width: 100%; z-index: 1; position: relative; }
+
+    /* ---------- Sidebar ---------- */
+    .sidebar-wrap {
+      position: fixed; top: 72px; left: 0;
+      width: var(--sidebar-width); height: calc(100vh - 72px);
+      background: var(--fns-blanco); border-right: 1px solid #E8DCAE;
+      box-shadow: 0 4px 20px rgba(11,16,102,0.15); z-index: 1200;
+      display: flex; flex-direction: column; transform: translateX(-100%); transition: transform 0.28s ease;
+    }
+    .sidebar-wrap.abierto { transform: translateX(0); }
+    .sidebar-header { padding: 16px 20px; border-bottom: 1px solid #E8DCAE; display: flex; justify-content: space-between; align-items: center; background: var(--fns-crema); }
+    .sidebar-header h2 { font-size: 1rem; font-weight: 700; color: var(--fns-azul); }
+    .btn-cerrar-sidebar { background: transparent; color: var(--fns-texto-suave); font-size: 1.4rem; line-height: 1; padding: 4px; border-radius: 6px; border: none; cursor: pointer; }
+    .btn-cerrar-sidebar:hover { color: var(--fns-azul); }
+    .sidebar-content { flex: 1; overflow-y: auto; padding: 16px 20px; }
+    .filtros-rapidos { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+    .chip { flex: 1 1 48%; min-width: 130px; padding: 8px 12px; border-radius: 8px; border: 1px solid #E8DCAE; background: var(--fns-blanco); color: var(--fns-texto-suave); font-size: 0.8rem; font-weight: 600; cursor: pointer; text-align: left; }
+    .chip:hover { border-color: var(--fns-azul); color: var(--fns-azul); }
+    .chip.activo { background: var(--fns-azul); color: var(--fns-blanco); border-color: var(--fns-azul); }
+    .chip .chip-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: middle; border: 2px solid var(--fns-blanco); box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
+    .categoria { margin-bottom: 22px; }
+    .cat-titulo { display: flex; align-items: center; gap: 10px; font-size: 0.92rem; font-weight: 700; color: var(--fns-azul); margin-bottom: 10px; padding-bottom: 7px; border-bottom: 2px solid rgba(11,16,102,0.12); cursor: pointer; user-select: none; }
+    .cat-titulo:hover { color: var(--fns-azul-oscuro); }
+    .cat-color { width: 14px; height: 14px; border-radius: 4px; border: 2px solid var(--fns-blanco); box-shadow: 0 0 0 1px rgba(0,0,0,0.12); }
+    .cat-total { margin-left: auto; font-size: 0.78rem; font-weight: 600; color: var(--fns-texto-suave); background: var(--fns-crema); padding: 2px 8px; border-radius: 10px; }
+    .rutas-lista { list-style: none; display: grid; gap: 6px; }
+    .ruta-item { position: relative; padding: 10px 12px; border-radius: 8px; border: 1px solid transparent; background: var(--fns-blanco); cursor: pointer; font-size: 0.86rem; text-align: left; overflow: hidden; }
+    .ruta-item:hover { background: var(--fns-crema); }
+    .ruta-item.activa { background: var(--fns-crema-oscuro); border-color: var(--fns-azul); box-shadow: inset 3px 0 0 var(--fns-azul); }
+    .ruta-dot { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--fns-blanco); box-shadow: 0 0 0 1px rgba(0,0,0,0.1); }
+    .ruta-nombre { font-weight: 600; color: var(--fns-texto); margin-left: 26px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ruta-sentido { font-size: 0.74rem; color: var(--fns-texto-suave); margin-left: 26px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .map-ctrl { position: absolute; top: 12px; left: calc(var(--sidebar-width) + 12px); z-index: 1050; display: flex; gap: 8px; background: var(--fns-blanco); padding: 8px; border-radius: 10px; box-shadow: 0 4px 20px rgba(11,16,102,0.15); border: 1px solid rgba(11,16,102,0.1); }
+    .toggle-capas { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--fns-texto-suave); }
+    .btn-abrir-sidebar { display: none; background: var(--fns-azul); color: var(--fns-blanco); border: none; width: 40px; height: 40px; border-radius: 10px; font-size: 1.3rem; cursor: pointer; box-shadow: 0 2px 8px rgba(11,16,102,0.3); }
+    .leaflet-popup-content-wrapper { border-radius: 10px; border: 1px solid rgba(11,16,102,0.12); box-shadow: 0 6px 24px rgba(11,16,102,0.18); }
+    .leaflet-popup-content { margin: 10px 12px; font-size: 0.9rem; }
+    .popup-titulo { font-weight: 700; color: var(--fns-azul); margin-bottom: 4px; font-size: 1rem; }
+    .popup-meta { font-size: 0.8rem; color: var(--fns-texto-suave); margin-bottom: 6px; }
+    .popup-color { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; vertical-align: middle; border: 2px solid var(--fns-blanco); }
+    @media (max-width: 900px) { .btn-abrir-sidebar { display: block; } .map-ctrl { left: 12px; } header { padding: 0 16px; } .header-titulo { font-size: 1rem; } }
+    .oculto { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <img src="assets/logo-fns.svg" alt="Fiesta Nacional del Sol 2026" class="logo-fns" onerror="this.style.display='none'">
+      <div>
+        <div class="header-titulo">Cómo llegar — FNS 2026</div>
+        <div class="header-sub">Líneas de colectivo · Estadio del Bicentenario · Pocito, San Juan</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secundario btn-sm" id="btn-ver-todo">Ver todo</button>
+      <button class="btn btn-secundario btn-sm" id="btn-ocultar-todo">Ocultar todo</button>
+      <button class="btn btn-primario" id="btn-abrir-menu">Filtrar líneas</button>
+    </div>
+  </header>
+
+  <button class="btn-abrir-sidebar" id="btn-toggle-sidebar" aria-label="Abrir menú de líneas">☰</button>
+
+  <div id="mapa"></div>
+
+  <div class="map-ctrl">
+    <label class="toggle-capas"><input type="checkbox" id="chk-puntos" checked> Puntos de inicio/final</label>
+  </div>
+
+  <div class="sidebar-wrap" id="sidebar">
+    <div class="sidebar-header">
+      <h2>Líneas FNS 2026</h2>
+      <button class="btn-cerrar-sidebar" id="btn-cerrar-sidebar" aria-label="Cerrar menú">✕</button>
+    </div>
+    <div class="sidebar-content">
+      <div class="filtros-rapidos" id="filtros-rapidos"></div>
+      <div class="categorias" id="categorias"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const RUTAS_JSON = 'rutas.json';
+    const CENTRO = [-31.610, -68.525];
+    const ZOOM_INICIAL = 13;
+
+    const mapa = L.map('mapa', { center: CENTRO, zoom: ZOOM_INICIAL, zoomControl: true, attributionControl: true });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors · FNS 2026'
+    }).addTo(mapa);
+
+    const capasRutas = new L.LayerGroup().addTo(mapa);
+    const capasPuntos = new L.LayerGroup().addTo(mapa);
+    let mostrarPuntos = true;
+
+    function estiloLinea(color) {
+      return { color: color, weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round' };
+    }
+
+    let datos = null;
+    const layerPorRuta = new Map();
+    const activas = new Set();
+    let categoriaSeleccionada = null;
+
+    async function cargarDatos() {
+      try {
+        const resp = await fetch(RUTAS_JSON);
+        if (!resp.ok) throw new Error('No se pudo cargar rutas.json');
+        datos = await resp.json();
+        inicializarUI();
+        dibujarTodas();
+        ajusteInicial();
+        setTimeout(() => mapa.invalidateSize(), 150);
+      } catch (e) {
+        console.error(e);
+        document.body.insertAdjacentHTML('afterbegin', '<div style="padding:16px;background:#fee2e2;color:#991b1b;border-radius:8px;max-width:400px;margin:20px auto;">Error cargando datos: ' + e.message + '</div>');
+      }
+    }
+
+    function inicializarUI() {
+      const contFiltros = document.getElementById('filtros-rapidos');
+      const contCategorias = document.getElementById('categorias');
+
+      const todasChip = document.createElement('button');
+      todasChip.className = 'chip activo';
+      todasChip.innerHTML = '<span class="chip-dot" style="background:#0B1066"></span>Todas';
+      todasChip.onclick = () => seleccionarCategoria(null);
+      contFiltros.appendChild(todasChip);
+
+      for (const cat of datos.categorias) {
+        const chip = document.createElement('button');
+        chip.className = 'chip';
+        chip.innerHTML = `<span class="chip-dot" style="background:${cat.color}"></span>${cat.label}`;
+        chip.onclick = () => seleccionarCategoria(cat.nombre);
+        contFiltros.appendChild(chip);
+      }
+
+      for (const cat of datos.categorias) {
+        const seccion = document.createElement('div');
+        seccion.className = 'categoria';
+
+        const titulo = document.createElement('div');
+        titulo.className = 'cat-titulo';
+        titulo.innerHTML = `<span class="cat-color" style="background:${cat.color}"></span><span>${cat.label}</span><span class="cat-total">${cat.archivos.length} recorrido${cat.archivos.length !== 1 ? 's' : ''}</span>`;
+        titulo.onclick = () => {
+          const lista = seccion.querySelector('.rutas-lista');
+          lista.style.display = (lista.style.display === 'none') ? 'grid' : 'none';
+        };
+        seccion.appendChild(titulo);
+
+        const lista = document.createElement('ul');
+        lista.className = 'rutas-lista';
+        lista.style.display = 'grid';
+
+        for (const linea of cat.archivos) {
+          for (let i = 0; i < linea.rutas.length; i++) {
+            const ruta = linea.rutas[i];
+            const clave = `${linea.archivo}#${i}`;
+            const item = document.createElement('li');
+            item.className = 'ruta-item';
+            item.dataset.clave = clave;
+            item.innerHTML = `<span class="ruta-dot" style="background:${linea.color}"></span><span class="ruta-nombre">${escapeHtml(ruta.nombre)}</span><span class="ruta-sentido">${escapeHtml(ruta.sentido)}</span>`;
+            item.onclick = (e) => { e.stopPropagation(); toggleRuta(clave, linea.color, ruta.coordenadas, item); };
+            lista.appendChild(item);
+          }
+        }
+        seccion.appendChild(lista);
+        contCategorias.appendChild(seccion);
+      }
+
+      document.getElementById('btn-ver-todo').onclick = () => { activas.clear(); for (const [clave] of layerPorRuta) activas.add(clave); repintar(); actualizarItems(); };
+      document.getElementById('btn-ocultar-todo').onclick = () => { activas.clear(); repintar(); actualizarItems(); };
+
+      document.getElementById('btn-toggle-sidebar').onclick = () => document.getElementById('sidebar').classList.add('abierto');
+      document.getElementById('btn-cerrar-sidebar').onclick = () => document.getElementById('sidebar').classList.remove('abierto');
+      document.getElementById('btn-abrir-menu').onclick = () => document.getElementById('sidebar').classList.add('abierto');
+      document.getElementById('mapa').onclick = () => { if (window.innerWidth <= 900) document.getElementById('sidebar').classList.remove('abierto'); };
+    }
+
+    function seleccionarCategoria(nombreCat) {
+      categoriaSeleccionada = nombreCat;
+      const chips = document.querySelectorAll('#filtros-rapidos .chip');
+      chips.forEach((c, idx) => {
+        if (idx === 0) c.className = nombreCat === null ? 'chip activo' : 'chip';
+        else { const cat = datos.categorias[idx - 1]; c.className = nombreCat === cat.nombre ? 'chip activo' : 'chip'; }
+      });
+      activas.clear();
+      if (nombreCat) {
+        const cat = datos.categorias.find(c => c.nombre === nombreCat);
+        if (cat) { for (const linea of cat.archivos) { for (let i = 0; i < linea.rutas.length; i++) activas.add(`${linea.archivo}#${i}`); } }
+      } else { for (const [clave] of layerPorRuta) activas.add(clave); }
+      repintar(); actualizarItems();
+      if (window.innerWidth <= 900) document.getElementById('sidebar').classList.remove('abierto');
+    }
+
+    function toggleRuta(clave, color, coordenadas, itemEl) {
+      if (activas.has(clave)) { activas.delete(clave); }
+      else {
+        if (categoriaSeleccionada) {
+          const info = datos.lineas.flatMap(l => l.rutas.map((r, i) => ({ clave: `${l.archivo}#${i}`, cat: l.categoria }))).find(x => x.clave === clave);
+          if (!info || info.cat !== categoriaSeleccionada) return;
+        }
+        activas.add(clave);
+      }
+      repintar(); actualizarItems();
+    }
+
+    function repintar() {
+      capasRutas.clearLayers(); capasPuntos.clearLayers();
+      for (const [clave, layer] of layerPorRuta) { if (activas.has(clave)) capasRutas.addLayer(layer); }
+      if (mostrarPuntos) {
+        for (const [clave, layer] of layerPorRuta) {
+          if (!activas.has(clave)) continue;
+          const latlngs = layer.getLatLngs(); if (!latlngs || latlngs.length === 0) continue;
+          const inicio = latlngs[0]; const fin = latlngs[latlngs.length - 1]; const color = layer.options.color;
+          L.circleMarker(inicio, { radius: 5, color: '#fff', fillColor: color, weight: 2, opacity: 1, fillOpacity: 0.95 }).addTo(capasPuntos);
+          L.circleMarker(fin, { radius: 5, color: color, fillColor: '#fff', weight: 2, opacity: 1, fillOpacity: 1 }).addTo(capasPuntos);
+        }
+      }
+    }
+
+    function actualizarItems() {
+      document.querySelectorAll('.ruta-item').forEach((item) => {
+        const clave = item.dataset.clave;
+        if (activas.has(clave)) item.classList.add('activa'); else item.classList.remove('activa');
+      });
+    }
+
+    function dibujarTodas() {
+      for (const linea of datos.lineas) {
+        for (let i = 0; i < linea.rutas.length; i++) {
+          const ruta = linea.rutas[i];
+          const clave = `${linea.archivo}#${i}`;
+          const polyline = L.polyline(ruta.coordenadas, estiloLinea(linea.color))
+            .bindPopup(`<div class="popup-titulo"><span class="popup-color" style="background:${linea.color}"></span>${escapeHtml(linea.nombre)}</div><div class="popup-meta">${escapeHtml(ruta.nombre)}</div><div class="popup-meta">Sentido: ${escapeHtml(ruta.sentido)}</div>`);
+          layerPorRuta.set(clave, polyline);
+          activas.add(clave);
+        }
+      }
+      repintar();
+      actualizarItems();
+    }
+
+    function ajusteInicial() {
+      if (activas.size > 0) { const grupo = new L.featureGroup([...layerPorRuta.values()]); mapa.fitBounds(grupo.getBounds().pad(0.1)); }
+    }
+
+    // ---------- Marcador Estadio con sol FNS ----------
+    const ESTADIO = [-31.6100, -68.5250];
+    const iconoEstadio = L.divIcon({
+      className: 'icono-estadio',
+      html: `<img src="assets/sol-fns.png" style="width:56px;height:56px;filter:drop-shadow(0 5px 15px rgba(11,16,102,0.5));" />`,
+      iconSize: [56, 56],
+      iconAnchor: [28, 28],
+      popupAnchor: [0, -26]
+    });
+    L.marker(ESTADIO, { icon: iconoEstadio }).addTo(mapa).bindPopup('<b>Estadio del Bicentenario</b><br>Fiesta Nacional del Sol 2026<br>Pocito · San Juan · Argentina', { direction: 'top' }).openPopup();
+
+    function escapeHtml(texto) { if (!texto) return ''; const d = document.createElement('div'); d.textContent = texto; return d.innerHTML; }
+
+    window.addEventListener('resize', () => { setTimeout(() => mapa.invalidateSize(), 100); });
+
+    cargarDatos();
+  </script>
+</body>
+</html>

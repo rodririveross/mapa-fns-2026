@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Círculo central del sol -->
+  <circle cx="50" cy="50" r="14" fill="#0B1066" stroke="#FFFFFF" stroke-width="2"/>
+  <!-- Rayos del sol -->
+  <g fill="#0B1066">
+    <!-- Rayo superior -->
+    <path d="M50 30 L47 20 L53 20 Z"/>
+    <path d="M64 38 L74 35 L72 43 Z"/>
+    <path d="M78 52 L86 49 L80 57 Z"/>
+    <path d="M82 68 L90 68 L88 76 Z"/>
+    <path d="M72 84 L70 94 L62 90 Z"/>
+    <path d="M55 90 L50 100 L44 94 Z"/>
+    <path d="M34 84 L28 90 L24 82 Z"/>
+    <path d="M18 68 L14 60 L22 59 Z"/>
+    <path d="M24 50 L12 48 L16 42 Z"/>
+    <path d="M32 34 L40 26 L37 36 Z"/>
+  </g>
+</svg>
